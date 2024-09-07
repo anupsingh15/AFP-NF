@@ -1,0 +1,62 @@
+seed: 2
+
+train_clean:
+ "/home/anup/PARAMSANAGANK_backup/data/PB/train/A/": "wav"
+train_noise: ["/home/anup/FMA/pointsource_noises", "wav"] 
+train_rir: ["/home/anup/FMA/real_rirs_isotropic_noises", "wav"] 
+train_distort_probs: null
+
+valid_clean:
+ "/home/anup/PARAMSANAGANK_backup/data/PB/test1": "wav"
+valid_noise: ["/home/anup/FMA/noise_16k", "wav"]
+valid_rir: ["/home/anup/FMA/rir_16k", "wav"]
+valid_distort_probs: null
+
+fs: 16000
+seglen: 0.99
+powerthresh: 0.0001
+audiofeat: "logmelspectrogram"
+audiofeat_params: {"n_fft":512, "hop_length":160, "n_mels":64}
+max_offset: 0.04
+snr_range: [0,25]
+specaug: null #{'num_mask': 2, 'freq_max_width': 0.1, 'time_max_width': 0.1}
+
+# Dataloader
+batchsize: 512
+load_workers: 48
+
+# Encoder
+patch_size: [64, 10] 
+patch_emb_dim: 128 
+nhead: 8
+dim_feedforward: 2048
+num_layers: 8
+encoder_activation: "relu"
+projection_dims: {'inp': 1280, 'out': 128} #####
+concat_position: False
+
+# NNblock
+bits: 16 ######
+activation: "relu"
+factor: [4,4]
+
+# NF
+nf_nblocks: 10
+nf_mlp_units: [64,64,64]
+
+
+# Training module
+temp: [0.1]
+lambda: [1, 0.3]
+optimizer: "adam"
+lr: 0.0001
+weight_decay: 0.01
+lr_scheduler: False
+temp_scheduler: {'apply': False, 'min_temp': 0.05, 'decayrate': 0.99}
+topk: 3
+bits_mismatch: 3
+
+
+# uniform space related params
+cutoff: 0.0
+boundary_thresh: 1
