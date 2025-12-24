@@ -74,8 +74,11 @@ if os.path.isdir(dic_path) is False:
     os.makedirs(dic_path)
 pickle.dump(cfg, open(os.path.join(dic_path, "params.pkl"), "wb"))
 
+# # Pretrain encoder
+# train_module = ModelPreTrainer(encoder=encoder, nnblock=nnblock, temp=cfg['temp'], optimizer=cfg['optimizer'], lr=cfg['lr'], wt_decay=cfg['weight_decay'],)
+
 # NF training
-pretrained_model = ModelPreTrainer.load_from_checkpoint(ckpt_path)
+pretrained_model = ModelPreTrainer.load_from_checkpoint("/home/anup/AFP3_PB/checkpoints/PB_A_pretrain/temp:[0.1]_bsz:512_lr:0.0001_seg:0.99_emb:128/checkpoints/last.ckpt")
 train_module = ModelTrainer(pretrained_model=pretrained_model, nflows=nflows, lambd=cfg['lambda'], temp=cfg['temp'], optimizer=cfg['optimizer'], lr=cfg['lr'], wt_decay=cfg['weight_decay'],)
 
 # callbacks

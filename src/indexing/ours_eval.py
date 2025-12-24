@@ -181,6 +181,7 @@ if __name__ == "__main__":
                 noise = reader.read(np.random.choice(noises))
                 clean_query = audiotrack[offset_with_buffer+fs: offset_with_buffer+fs+(fs*length)]
                 # noise_query = distorter.add_noise(audiotrack[offset_with_buffer+fs: offset_with_buffer+fs+(fs*length)], noise, snr)
+                noise_reverb_04_query = distorter.add_noise_reverb(audiotrack[offset_with_buffer:offset_with_buffer+(1+length)*fs], noise, snr, rir04)[fs: (1+length)*fs]
                 # noise_reverb_05_query = distorter.add_noise_reverb(audiotrack[offset_with_buffer:offset_with_buffer+(1+length)*fs], noise, snr, rir05)[fs: (1+length)*fs]
                 # reverb_query = distorter.add_reverb(audiotrack[offset_with_buffer:offset_with_buffer+ (1+length)*fs], rirdata)[fs: (1+length)*fs]
                 query_timeoffset = str((offset_with_buffer + fs)/fs)
@@ -200,4 +201,76 @@ if __name__ == "__main__":
         # R[t60] = [FILE_MATCHES, CANDS_PERC, T_RET, T_TRUE, EVIDENCE, fail]
         pickle.dump(R, open(savepath+"/R_noisereverb_t1.0.pkl", "wb"))
 
+# ###################################################################################################
+# ###################################################################################################
 
+
+# #########################################################################################################################################
+# # FOR ANALYSIS..HOW MANY BUCKETS MATCH WITH DIFFERENT DISCREPANCY REGION WIDTH
+# #########################################################################################################################################
+# def codes_to_key(code):
+#     key = int("".join(map(str, list(code))), 2)
+#     return key
+
+# def analysis(dis_anc, dis_pos, anc_thresh, pos_thresh):
+#     cutoff = 0
+#     nfeats = 16
+
+#     ANC_BUCKETS = []
+#     POS_BUCKETS = []
+#     FOUND_BUCKET = []
+
+#     for i, (dis_ai, dis_pi) in enumerate(tqdm(zip(dis_anc, dis_pos))):
+
+#         # possible buckets for anc
+#         bits_flip_cand_index_anc = np.argwhere((torch.abs(z_anc[i].cpu() - cutoff) < anc_thresh) == True)[0]
+#         possible_buckets_anc = []
+#         for bits_comb in itertools.product([0, 1], repeat=len(bits_flip_cand_index_anc)):
+#             dis_a2 = dis_ai.clone()
+#             dis_a2[bits_flip_cand_index_anc] = torch.tensor(bits_comb, device=dis_a2.device, dtype=dis_a2.dtype)
+#             possible_buckets_anc.append(codes_to_key(dis_a2.numpy()))
+
+#         # possible buckets for pos
+#         possible_buckets_pos = []
+#         bits_flip_cand_index_pos = torch.where((torch.abs(z_pos[i].cpu() - cutoff) < pos_thresh) == True)[0] ############## 0.5, 0.2
+#         for bits_comb in itertools.product([0, 1], repeat=len(bits_flip_cand_index_pos)):
+#             dis_p2 = dis_pi.clone()
+#             dis_p2[bits_flip_cand_index_pos] = torch.tensor(bits_comb, device=dis_p2.device, dtype=dis_p2.dtype)
+#             possible_buckets_pos.append(codes_to_key(dis_p2.numpy()))
+    
+#         ANC_BUCKETS.append(len(possible_buckets_anc))
+#         POS_BUCKETS.append(len(possible_buckets_pos))
+#         FOUND_BUCKET.append(len(set(possible_buckets_anc)&set(possible_buckets_pos)))
+
+#     return ANC_BUCKETS, POS_BUCKETS, FOUND_BUCKET
+
+# cfg = pickle.load(open("/nlsasfs/home/nltm-st/vipular/AFP3_NF_new/run0/checkpoints/NF_BCE_new0.50/params.pkl", "rb"))
+# encoder = Encoder(inp_dims=cfg['patch_emb_dim'], patch_size=cfg['patch_size'], nhead=cfg['nhead'], dim_feedforward=cfg['dim_feedforward'], num_layers=cfg['num_layers'],
+#                  activation=cfg['encoder_activation'], projection_dims=cfg['projection_dims'], concat_position=cfg['concat_position'])
+# nnblock = NNBlock(inp_dims=cfg['projection_dims']['out'], bits=cfg['bits'], activation=cfg['activation'], factor=cfg['factor'])
+# pretrained_model = ModelPreTrainer.load_from_checkpoint("/nlsasfs/home/nltm-st/vipular/AFP3_NF_new/checkpoints/pretrained_encoders_checkpoints/pretrain_mu0_d128_16bits_fma_medium_old/last-v1.ckpt")
+# base = BimodalGMM(device="cuda")
+# nflows = NormalizingFlow(num_layers=cfg['nf_nblocks'], nfeats=cfg['bits'], mlp_units=cfg['nf_mlp_units'], q0=base)
+# model = ModelTrainer.load_from_checkpoint("/nlsasfs/home/nltm-st/vipular/AFP3_NF_new/run0/checkpoints/NF_BCE_new0.50/temp:[0.1]_bsz:512_lr:0.005_seg:0.99_emb:128/checkpoints/last.ckpt", pretrained_model=pretrained_model, nflows=nflows, lambd=cfg['lambda'], temp=cfg['temp'], optimizer=cfg['optimizer'], lr=cfg['lr'], wt_decay=cfg['weight_decay'],)
+# model.to("cuda")
+# model.eval()
+
+# snrs = [0,5,10,15,20,25]
+# R = {}
+# for i in range(len(snrs)-1):
+#     print(snrs[i])
+#     snr = [snrs[i], snrs[i+1]]
+#     train_dataset = SSLDataset(audiopath=cfg['train_clean'], noisepath=cfg['train_noise'] , rirpath=cfg['train_rir'] , fs=cfg['fs'], seglen=cfg['seglen'],
+#                     power_thresh=cfg['powerthresh'], audiofeat=cfg['audiofeat'], audiofeat_params=cfg['audiofeat_params'], max_offset=cfg['max_offset'], 
+#                     snr_range=snr, specaug=cfg['specaug'], distort_probs=[0,0,1])
+#     train_dataloader = DataLoader(train_dataset, batch_size=int(2048), shuffle=True, drop_last=True, num_workers=cfg['load_workers'], pin_memory=False)    
+
+#     anc, pos = next(iter(train_dataloader))
+#     _, _, proj_anc, z_anc = model.predict_step(anc.to("cuda"),1)
+#     _, _, proj_pos, z_pos = model.predict_step(pos.to("cuda"),1)
+#     dis_anc = torch.where(z_anc<0, 0, 1).to("cpu")
+#     dis_pos = torch.where(z_pos<0, 0, 1).to("cpu")
+
+#     ANC_BUCKETS, POS_BUCKETS, FOUND_BUCKET = analysis(dis_anc=dis_anc, dis_pos=dis_pos, anc_thresh=0.5, pos_thresh=1.0)    
+#     R[snrs[i]] = [ANC_BUCKETS, POS_BUCKETS, FOUND_BUCKET]
+#     pickle.dump(R, open("/nlsasfs/home/nltm-st/vipular/AFP3_NF_new/analysis/BCE_0.5new_d128/noisereverb_at_0.5_pt_1.0.pkl", "wb"))
